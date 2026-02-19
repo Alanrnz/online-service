@@ -1,0 +1,2 @@
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'S!m@rtSrv3_2026#SQLx';
+FLUSH PRIVILEGES;

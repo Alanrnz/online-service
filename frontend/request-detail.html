@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartServe Solutions - Request Detail</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-brand">SmartServe Solutions</div>
+        <div class="navbar-menu">
+            <a href="dashboard.html" class="nav-link">Dashboard</a>
+            <a href="service-request.html" class="nav-link">New Request</a>
+            <button id="logoutBtn" class="btn-logout">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="loadingSpinner" class="loading-spinner">
+            Loading request details...
+        </div>
+
+        <!-- ===== INTEGRATION POINT: Request Detail View ===== -->
+        <!-- Displays detailed information about a specific service request -->
+        <!-- Including full description, status history, and action buttons -->
+        
+        <div id="requestDetail" class="dashboard-section" style="display: none;">
+            <div class="section-header">
+                <h2 id="requestTitle">Service Request Details</h2>
+                <button id="backBtn" class="btn-primary">← Back to Dashboard</button>
+            </div>
+
+            <!-- Request Summary -->
+            <div style="margin-bottom: 30px; padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <h3 style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Service Type</h3>
+                        <p style="font-size: 18px; font-weight: bold;" id="serviceType">-</p>
+                    </div>
+                    <div>
+                        <h3 style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Priority</h3>
+                        <p id="priorityBadge"></p>
+                    </div>
+                    <div>
+                        <h3 style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Current Status</h3>
+                        <p id="statusBadge"></p>
+                    </div>
+                    <div>
+                        <h3 style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Created Date</h3>
+                        <p id="createdDate">-</p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3 style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Description</h3>
+                    <p id="description" style="font-size: 16px; line-height: 1.6;">-</p>
+                </div>
+
+                <div style="margin-top: 20px;">
+                    <h3 style="color: #666; font-size: 12px; text-transform: uppercase; margin-bottom: 8px;">Location</h3>
+                    <p id="location" style="font-size: 16px;">-</p>
+                </div>
+            </div>
+
+            <!-- Status Timeline -->
+            <!-- ===== INTEGRATION POINT: Status History Display ===== -->
+            <!-- Fetches and displays complete status change history from backend -->
+            <div style="margin-bottom: 20px;">
+                <h3 style="margin-bottom: 15px;">Status Timeline</h3>
+                <div id="statusTimeline" style="padding: 20px; background-color: #f5f5f5; border-radius: 8px;">
+                    <p id="loadingTimeline" style="color: #999;">Loading status history...</p>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="margin-top: 30px; display: flex; gap: 10px;">
+                <a href="service-request.html" class="btn-primary" id="editBtn">Edit Request</a>
+                <button id="deleteBtn" class="btn-small btn-danger">Delete Request</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <script>
+        /**
+         * Request Detail Page Initialization
+         * 
+         * Gets request ID from URL query parameter
+         * Fetches request details and status history from backend
+         * Displays in formatted layout
+         */
+
+        let currentRequestId;
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check authentication
+            if (!localStorage.getItem('token')) {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // Get request ID from URL
+            const urlParams = new URLSearchParams(window.location.search);
+            currentRequestId = urlParams.get('id');
+
+            if (!currentRequestId) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // Load request details
+            await loadRequestDetail();
+            
+            // Load status history
+            await loadStatusHistory();
+
+            // Setup event listeners
+            document.getElementById('backBtn').addEventListener('click', () => {
+                window.location.href = 'dashboard.html';
+            });
+
+            document.getElementById('editBtn').addEventListener('click', () => {
+                window.location.href = `service-request.html?id=${currentRequestId}`;
+            });
+
+            document.getElementById('deleteBtn').addEventListener('click', deleteRequest);
+
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('token');
+                window.location.href = 'index.html';
+            });
+        });
+
+        /**
+         * Load request details from backend
+         * 
+         * Calls: GET /api/requests/:id
+         * Displays: Service type, description, priority, status, location
+         */
+        async function loadRequestDetail() {
+            try {
+                const request = await apiRequest(`/requests/${currentRequestId}`);
+                
+                const data = request.data;
+                
+                // Populate form fields
+                document.getElementById('serviceType').innerText = data.serviceType;
+                document.getElementById('description').innerText = data.description;
+                document.getElementById('location').innerText = data.location || 'Not specified';
+                document.getElementById('createdDate').innerText = new Date(data.createdAt).toLocaleString();
+
+                // Priority badge
+                const priorityBadge = document.createElement('span');
+                priorityBadge.className = `badge-priority badge-${data.priority.toLowerCase()}`;
+                priorityBadge.innerText = data.priority;
+                document.getElementById('priorityBadge').appendChild(priorityBadge);
+
+                // Status badge
+                const statusBadge = document.createElement('span');
+                const statusClass = 'status-' + data.status.toLowerCase().replace(' ', '-');
+                statusBadge.className = `badge-status ${statusClass}`;
+                statusBadge.innerText = data.status;
+                document.getElementById('statusBadge').appendChild(statusBadge);
+
+                document.getElementById('requestTitle').innerText = `${data.serviceType} - ${data.id.substring(0, 8)}...`;
+
+                document.getElementById('loadingSpinner').style.display = 'none';
+                document.getElementById('requestDetail').style.display = 'block';
+
+            } catch (error) {
+                document.getElementById('loadingSpinner').innerText = '❌ Error loading request: ' + error.message;
+            }
+        }
+
+        /**
+         * Load status history from backend
+         * 
+         * INTEGRATION POINT: Fetch Status History
+         * Calls: GET /api/status/history/:requestId
+         * Displays: Timeline of all status changes
+         */
+        async function loadStatusHistory() {
+            try {
+                const response = await apiRequest(`/status/history/${currentRequestId}`);
+                const history = response.data || [];
+
+                const timeline = document.getElementById('statusTimeline');
+                timeline.innerHTML = '';
+
+                if (history.length === 0) {
+                    timeline.innerHTML = '<p style="color: #999;">No status updates yet</p>';
+                    return;
+                }
+
+                history.forEach((update, index) => {
+                    const timelineItem = document.createElement('div');
+                    timelineItem.style.cssText = `
+                        margin-bottom: 20px;
+                        padding-bottom: 20px;
+                        border-bottom: 1px solid #ddd;
+                    `;
+
+                    const timestamp = new Date(update.timestamp).toLocaleString();
+                    const statusColor = getStatusColor(update.status);
+
+                    timelineItem.innerHTML = `
+                        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                            <span style="
+                                width: 12px;
+                                height: 12px;
+                                border-radius: 50%;
+                                background-color: ${statusColor};
+                                margin-right: 15px;
+                                flex-shrink: 0;
+                            "></span>
+                            <span style="font-weight: bold; margin-right: 10px;">${update.status}</span>
+                            <span style="color: #999; font-size: 12px;">${timestamp}</span>
+                        </div>
+                        ${update.assignedTo ? `<p style="margin-left: 27px; color: #666; font-size: 14px;">👤 ${update.assignedTo}</p>` : ''}
+                        ${update.notes ? `<p style="margin-left: 27px; color: #666; font-size: 14px; font-style: italic;">"${update.notes}"</p>` : ''}
+                    `;
+
+                    timeline.appendChild(timelineItem);
+                });
+
+            } catch (error) {
+                document.getElementById('statusTimeline').innerHTML = 
+                    '❌ Error loading status history: ' + error.message;
+            }
+        }
+
+        /**
+         * Get color for status display
+         */
+        function getStatusColor(status) {
+            const colors = {
+                'Pending': '#FFC107',
+                'Assigned': '#2196F3',
+                'In Progress': '#9C27B0',
+                'Completed': '#4CAF50',
+                'On Hold': '#FF9800',
+                'Cancelled': '#F44336'
+            };
+            return colors[status] || '#999';
+        }
+
+        /**
+         * Delete service request
+         * Calls: DELETE /api/requests/:id
+         */
+        async function deleteRequest() {
+            if (!confirm('Are you sure you want to delete this request?')) {
+                return;
+            }
+
+            try {
+                await apiRequest(`/requests/${currentRequestId}`, {
+                    method: 'DELETE'
+                });
+                alert('Request deleted successfully');
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                alert('❌ Error deleting request: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartServe Solutions - Login</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-wrapper">
+            <div class="login-box">
+                <h1>SmartServe Solutions</h1>
+                <h2>Online Service Management System</h2>
+                
+                <!-- ===== INTEGRATION POINT 1: Login Form Submission ===== -->
+                <!-- This form collects credentials and sends them to backend via fetch() -->
+                <!-- Data flows: User Input → JavaScript Handler → POST /api/auth/login → Backend Validation → JWT Token → Store in localStorage -->
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            placeholder="your@email.com"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            placeholder="Enter your password"
+                            required
+                        >
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Login</button>
+                    
+                    <div id="errorMessage" class="error-message" style="display: none;"></div>
+                </form>
+                
+                <p class="register-link">
+                    Don't have an account? <a href="register.html">Register here</a>
+                </p>
+                
+                <!-- ===== STATUS INDICATOR ===== -->
+                <!-- Shows connection status to backend -->
+                <div class="connection-status">
+                    <p id="statusText">Checking backend connection...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FRONTEND JAVASCRIPT: API INTEGRATION ===== -->
+    <!-- This script handles login form submission and backend communication -->
+    <script src="js/auth.js"></script>
+    
+    <script>
+        // Check backend connection on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkBackendConnection();
+        });
+        
+        /**
+         * Verify backend is running before allowing login
+         * Calls the health check endpoint
+         */
+        async function checkBackendConnection() {
+            try {
+                const response = await fetch('http://localhost:5000/api/health');
+                const data = await response.json();
+                document.getElementById('statusText').innerText = 
+                    '✅ Backend Connected: ' + data.message;
+            } catch (error) {
+                document.getElementById('statusText').innerText = 
+                    '❌ Backend Offline - Start the Node.js server';
+                document.getElementById('statusText').style.color = '#d32f2f';
+            }
+        }
+    </script>
+</body>
+</html>

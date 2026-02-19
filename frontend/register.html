@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartServe Solutions - Register</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-wrapper">
+            <div class="login-box">
+                <h1>SmartServe Solutions</h1>
+                <h2>Create New Account</h2>
+                
+                <!-- ===== INTEGRATION POINT: User Registration Form ===== -->
+                <!-- Collects user information and sends to POST /api/auth/register -->
+                
+                <form id="registerForm">
+                    <div class="form-group">
+                        <label for="username">Username:</label>
+                        <input 
+                            type="text" 
+                            id="username" 
+                            name="username" 
+                            placeholder="Choose a username (min 3 characters)"
+                            minlength="3"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">Email:</label>
+                        <input 
+                            type="email" 
+                            id="email" 
+                            name="email" 
+                            placeholder="your@email.com"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password">Password:</label>
+                        <input 
+                            type="password" 
+                            id="password" 
+                            name="password" 
+                            placeholder="Enter a strong password (min 6 characters)"
+                            minlength="6"
+                            required
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">Phone (Optional):</label>
+                        <input 
+                            type="tel" 
+                            id="phone" 
+                            name="phone" 
+                            placeholder="+1-234-567-8900"
+                        >
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="address">Address (Optional):</label>
+                        <input 
+                            type="text" 
+                            id="address" 
+                            name="address" 
+                            placeholder="123 Main Street, City, State"
+                        >
+                    </div>
+                    
+                    <button type="submit" class="btn-primary">Register</button>
+                    
+                    <div id="errorMessage" class="error-message" style="display: none;"></div>
+                    <div id="successMessage" class="success-message" style="display: none;"></div>
+                </form>
+                
+                <p class="login-link">
+                    Already have an account? <a href="index.html">Login here</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    
+    <script>
+        /**
+         * Handle user registration
+         * Sends form data to backend POST /api/auth/register
+         */
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                username: document.getElementById('username').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                phone: document.getElementById('phone').value || null,
+                address: document.getElementById('address').value || null
+            };
+            
+            try {
+                // ===== FRONTEND → BACKEND API CALL =====
+                // Send registration data to backend
+                const response = await fetch('http://localhost:5000/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.message || data.error || 'Registration failed');
+                }
+                
+                // ===== SUCCESS HANDLING =====
+                // Show success message and redirect to login
+                const successMsg = document.getElementById('successMessage');
+                successMsg.innerText = '✅ Registration successful! Redirecting to login...';
+                successMsg.style.display = 'block';
+                
+                // Store token (if auto-login)
+                localStorage.setItem('token', data.token);
+                
+                // Redirect to dashboard after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+                
+            } catch (error) {
+                // ===== ERROR HANDLING =====
+                const errorMsg = document.getElementById('errorMessage');
+                errorMsg.innerText = '❌ ' + error.message;
+                errorMsg.style.display = 'block';
+                console.error('Registration error:', error);
+            }
+        });
+    </script>
+</body>
+</html>

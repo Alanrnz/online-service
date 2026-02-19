@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartServe Solutions - Service Request</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="navbar">
+        <div class="navbar-brand">SmartServe Solutions</div>
+        <div class="navbar-menu">
+            <a href="dashboard.html" class="nav-link">Dashboard</a>
+            <a href="#" class="nav-link active">New Request</a>
+            <button id="logoutBtn" class="btn-logout">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="form-container">
+            <div class="form-header">
+                <h1>Submit Service Request</h1>
+                <p>Describe the service you need and we'll get back to you shortly</p>
+            </div>
+
+            <!-- ===== INTEGRATION POINT 3: Service Request Form Submission ===== -->
+            <!-- This form collects service request details and sends to backend -->
+            <!-- Data flows: Form Input → Validation → POST /api/requests → Database Store → Success Response -->
+            
+            <form id="serviceRequestForm">
+                <div class="form-group">
+                    <label for="serviceType">Service Type:</label>
+                    <select id="serviceType" name="serviceType" required>
+                        <option value="">Select a service type...</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Repair">Repair</option>
+                        <option value="Installation">Installation</option>
+                        <option value="Support">Support</option>
+                        <option value="Consultation">Consultation</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="description">Description:</label>
+                    <textarea 
+                        id="description" 
+                        name="description" 
+                        placeholder="Please describe the service you need in detail..."
+                        minlength="10"
+                        maxlength="1000"
+                        required
+                        rows="5"
+                    ></textarea>
+                    <small id="charCount">0/1000 characters</small>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="priority">Priority Level:</label>
+                        <select id="priority" name="priority">
+                            <option value="Low">Low</option>
+                            <option value="Medium" selected>Medium</option>
+                            <option value="High">High</option>
+                            <option value="Urgent">Urgent</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="location">Location:</label>
+                        <input 
+                            type="text" 
+                            id="location" 
+                            name="location" 
+                            placeholder="Service location address"
+                        >
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-primary btn-large">Submit Service Request</button>
+                
+                <div id="errorMessage" class="error-message" style="display: none;"></div>
+                <div id="successMessage" class="success-message" style="display: none;"></div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    
+    <script>
+        /**
+         * Service Request Form Initialization
+         */
+        document.addEventListener('DOMContentLoaded', () => {
+            // Check authentication
+            if (!localStorage.getItem('token')) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Character counter for description
+            const description = document.getElementById('description');
+            description.addEventListener('input', () => {
+                const charCount = document.getElementById('charCount');
+                charCount.innerText = `${description.value.length}/1000 characters`;
+            });
+            
+            // Logout button
+            document.getElementById('logoutBtn').addEventListener('click', () => {
+                localStorage.removeItem('token');
+                window.location.href = 'index.html';
+            });
+        });
+        
+        /**
+         * INTEGRATION POINT 3: Service Request Submission
+         * 
+         * Complete Request-Response Flow:
+         * 
+         * 1. USER SUBMITS FORM (Frontend)
+         *    └─ JavaScript captures form data
+         *    └─ Validates input (client-side)
+         * 
+         * 2. FRONTEND → BACKEND (API Call)
+         *    └─ POST /api/requests
+         *    └─ Headers: Authorization token, Content-Type
+         *    └─ Body: service details as JSON
+         * 
+         * 3. BACKEND PROCESSING (Node.js/Express)
+         *    └─ Route handler receives request
+         *    └─ Middleware: verifyToken (authentication check)
+         *    └─ Input validation (business logic)
+         * 
+         * 4. DATABASE OPERATION (Mongoose/MongoDB)
+         *    └─ CREATE new ServiceRequest document
+         *    └─ INSERT into database
+         *    └─ Return saved document with ID
+         * 
+         * 5. BACKEND → FRONTEND (Response)
+         *    └─ Status: 201 Created
+         *    └─ Body: { success: true, data: {...} }
+         * 
+         * 6. FRONTEND HANDLING (JavaScript)
+         *    └─ Parse response JSON
+         *    └─ Show success message
+         *    └─ Redirect to dashboard
+         */
+        
+        document.getElementById('serviceRequestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // ===== STEP 1: COLLECT FORM DATA =====
+            const formData = {
+                serviceType: document.getElementById('serviceType').value,
+                description: document.getElementById('description').value,
+                priority: document.getElementById('priority').value,
+                location: document.getElementById('location').value || null
+            };
+            
+            // ===== STEP 2: VALIDATE CLIENT-SIDE =====
+            if (!formData.serviceType || !formData.description) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            
+            const errorMsg = document.getElementById('errorMessage');
+            const successMsg = document.getElementById('successMessage');
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+            
+            try {
+                // ===== STEP 3: SEND TO BACKEND =====
+                // POST request to /api/requests with JWT token in header
+                const response = await fetch('http://localhost:5000/api/requests', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                // ===== STEP 4: HANDLE RESPONSE =====
+                if (!response.ok) {
+                    throw new Error(data.message || 'Failed to submit request');
+                }
+                
+                // ===== STEP 5: SUCCESS HANDLING =====
+                successMsg.innerText = `✅ ${data.message}. Redirecting to dashboard...`;
+                successMsg.style.display = 'block';
+                
+                // Clear form
+                document.getElementById('serviceRequestForm').reset();
+                
+                // Store the request ID (optional)
+                localStorage.setItem('lastRequestId', data.data.id);
+                
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+                
+            } catch (error) {
+                // ===== ERROR HANDLING =====
+                console.error('Request submission error:', error);
+                errorMsg.innerText = `❌ Error: ${error.message}`;
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
